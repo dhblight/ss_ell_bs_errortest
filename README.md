@@ -1,1 +1,1 @@
-# ss_ell_bs_errortest
+# Testing the reliability of applying the optimized DMD algorithm to a small sphere -> ellipsoid -> big sphere model for viral capsid formation
