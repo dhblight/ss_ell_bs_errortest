@@ -19,12 +19,11 @@ rb = r1 * ratio^(-1/3); % make it so that the volume of the ellipsoid and sphere
 ra = rb * ratio;
 
 Mss = 180000; % molar mass of small spheres (g/mol)
-Mbs = Mss * nsph; % " " " big spheres
-Mell = Mss * nsph; % " " " ellipsoids
+M = Mss * nsph; % " " " big spheres & ellipsoids
 
 c0 = 1e-9; % initial concentration (mol/cm^3) 
 
-ntau = 50; % there will be ntau^2 * numtrials * length(rankvals) iterations in total 
+ntau = 1; % there will be ntau^2 * numtrials * length(rankvals) iterations in total 
 tau1vals = linspace(1,99,ntau); % relaxation time for small spheres -> ellipsoid
 tau2vals = linspace(10,990,ntau); % relaxation time for ellipsoid -> big sphere
 
@@ -72,8 +71,8 @@ for tau1_iter = tau1vals
         [Css,Cell,Cbs] = c_t_3species(c0,T,tau1_iter,tau2_iter,nsph);
         
         % intentisty
-        Xclean = Mss^2 .* Pss .* Css + Mbs^2 .* Pbs .* Cbs + ...
-            Mell^2 .* Pell .* Cell;
+        Xclean = Mss^2 .* Pss .* Css + M^2 .* Pbs .* Cbs + ...
+            M^2 .* Pell .* Cell;
         
         for r = rankvals
             
