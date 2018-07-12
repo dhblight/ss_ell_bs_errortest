@@ -166,29 +166,3 @@ end
 % saves data as "prefix_dd-mmm-yyyy_HH-MM.mat"
 formatout = 'dd-mmm-yyyy_HH-MM';
 save(strcat('reliability_test','_',datestr(datetime('now'),formatout),'.mat'));
-
-
-
-
-
-
-
-
-    % Initially this appeared faster but after testing it isnt
-%         Xclean = zeros(n,m);
-%         for ii = 1:n %%% maybe change to parfor
-%             for jj = 1:m
-%                 % form factors
-%                 Pss = sphere_p_q(qgrid(ii,jj),r0);
-%                 Pell = elipse_p_q(qgrid(ii,jj),ra,rb);
-%                 Pbs = sphere_p_q(qgrid(ii,jj),r1);
-%                 
-%                 % concentrations
-%                 [Css,Cell,Cbs] = c_t_3species(c0,T(ii,jj),tau1_iter,tau2_iter,nsph);
-%                 
-%                 % intensity = form factor * concentration * molar mass^2
-%                 Xclean(ii,jj) = Mss^2 * Pss * Css + Mbs^2 * Pbs * Cbs + ...
-%                     Mell^2 * Pell * Cell;
-%             end
-%         end
-
