@@ -1,4 +1,4 @@
-function [w,e,b,err] = multioptdmd(X,t,r,imode,num_vals)
+function [w,e,b,err] = multioptdmd2(X,t,r,imode,num_vals)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Modification to optdmd.m allowing for multiple starting values of alpha,
 % decreasing the likelihood of an erroneous result caused by the
@@ -32,17 +32,34 @@ atilde = u1'*dx*v1/s1;
 alpha_init0 = eig(atilde);
 clear ux1 ux2 atilde t1 t2 dx xin
 
+% fit to all of data
+m = length(t);
+[is,~] = size(X);
+ia = r;
+n = r;
+
+factors = logspace(-2,0,num_vals-1);
+
 for ii = 1:num_vals
     
     if ii == 1
         alpha_init = alpha_init0;
     else
-        alpha_init = alpha_init0 .* 0.01 .* randn(size(alpha_init0));
+        alpha_init = alpha_init0 .* factors(ii-1) .* randn(size(alpha_init0));
     end
-    
-    [wvals(:,:,ii),evals(:,ii),bvals(:,ii),errvals(:,ii)] = optdmdedit(X,t,r,imode,alpha_init);
-    lasterr(ii) = errvals(30,ii);
-    
+    [wtemp,etemp,niter,err,imode,alphas] = varpro2(transpose(X),t, ...
+        @varpro2expfun,@varpro2dexpfun,m,n,is,ia,alpha_init,varpro_opts_edit());
+    wtemp = transpose(wtemp);        
+    btemp = sqrt(sum(abs(wtemp).^2,1))'; % normalize
+    wvals(:,:,ii) = wtemp*diag(1./btemp);
+    evals(:,ii) = etemp;
+    bvals(:,ii) = btemp;
+    errvals(:,ii) = err;
+    if errvals(:,ii) ~= zeros(30,1)
+        lasterr(ii) = errvals(30,ii);
+    else
+        lasterr(ii) = inf;
+    end
 end
 
 [~,ind] = min(lasterr);
