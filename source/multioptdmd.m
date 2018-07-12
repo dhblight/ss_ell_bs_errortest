@@ -1,21 +1,33 @@
-function [w,e,b,err] = multioptdmd2(X,t,r,imode,num_vals)
+function [w,e,b,final_error,evals] = multioptdmd3(X,t,r,maxerr)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Modification to optdmd.m allowing for multiple starting values of alpha,
 % decreasing the likelihood of an erroneous result caused by the
 % initialisation algoithm finding a local minimizer of eq(47) in the 
 % optimized DMD article instead of the global minimizer
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Input:
+%
+% X: Data Matrix
+% t: time series
+% r: rank to use 
+% maxerr: maximum error given b varpro 2 which we accept (if unsure run
+% multiple trials with a high maxerr and store the final_error values, then
+% choose a sensible number based off these values (~ %error?? seems to work)
+% tol: max difference between 2 successive values which are less than maxerr
+% before we exit the loop
+%
+% Output:
+%
+% w: each w(:,ii) is the DMD mode
+% e: e(ii) is the eigenvalue corresponding to w(:,ii)
+% b: b(ii) is the coefficient corresponding to the weight of each mode
+% final_error:
+% evals: the number of times varpro2.m was called
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 rng('shuffle');
 
-[rows,cols] = size(X); 
-errvals = zeros(30,num_vals); % 30 is max iterations in varpro opts
-evals = zeros(r,num_vals);
-wvals = zeros(rows,r,num_vals);
-bvals = zeros(r,num_vals);
-lasterr = zeros(1,num_vals);
-
-% initial guess at alpha_init which we will perturb for e
+% initial guess at alpha_init which we will perturb 
 [u,~,~] = svd(X,'econ');
 ux1 = u'*X;
 ux2 = ux1(:,2:end);
@@ -32,41 +44,48 @@ atilde = u1'*dx*v1/s1;
 alpha_init0 = eig(atilde);
 clear ux1 ux2 atilde t1 t2 dx xin
 
-% fit to all of data
+% inputs for varpro2
 m = length(t);
 [is,~] = size(X);
 ia = r;
 n = r;
 
-factors = logspace(-2,0,num_vals-1);
+count = 1;
+evals = 0;
 
-for ii = 1:num_vals
+while true % repeat until a satisfying error is obtained
     
-    if ii == 1
-        alpha_init = alpha_init0;
+    if evals == 0
+        alpha_init = alpha_init0; % 1st try is our initial guess
     else
-        alpha_init = alpha_init0 .* factors(ii-1) .* randn(size(alpha_init0));
+        alpha_init = alpha_init0 .* 10^(3*rand-2.5); % after that we multiply it by a random amount
     end
-    [wtemp,etemp,niter,err,imode,alphas] = varpro2(transpose(X),t, ...
+    
+    % execution of varpro2.m to find w,e,b
+    [wtemp,e,niter,err,imode,alphas] = varpro2edit(transpose(X),t, ...
         @varpro2expfun,@varpro2dexpfun,m,n,is,ia,alpha_init,varpro_opts_edit());
-    wtemp = transpose(wtemp);        
-    btemp = sqrt(sum(abs(wtemp).^2,1))'; % normalize
-    wvals(:,:,ii) = wtemp*diag(1./btemp);
-    evals(:,ii) = etemp;
-    bvals(:,ii) = btemp;
-    errvals(:,ii) = err;
-    if errvals(:,ii) ~= zeros(30,1)
-        lasterr(ii) = errvals(30,ii);
-    else
-        lasterr(ii) = inf;
-    end
-end
-
-[~,ind] = min(lasterr);
-w = wvals(:,:,ind);
-e = evals(:,ind);
-b = bvals(:,ind);
-err = errvals(:,ind);
-
+    wtemp = transpose(wtemp);
+    b = sqrt(sum(abs(wtemp).^2,1))'; 
+    w = wtemp*diag(1./b); % normalise w  
     
-
+    % it was observed that when varpro2 lowers the error to zero this leads to less reliable results
+    if all(err) > 0 % so avoid this
+       
+        lasterr(count) = err(30); 
+        
+        % break if the algorithm repeatedly finds the same error and it is below our maximum allowed value
+        if count > 1 
+            movmean = (lasterr(count) + lasterr(count-1))/2;
+            if movmean < maxerr
+                if abs(lasterr(count) - lasterr(count-1))/mean([lasterr(count),lasterr(count-1)])...
+                        <= 0.01
+                    final_error = lasterr(count);
+                    evals = evals + 1;
+                    break
+                end
+            end
+        end
+        count = count+1;
+    end
+    evals = evals + 1;
+end
